@@ -67,7 +67,7 @@ def evaluate(schedule, p):
 
 
 def rank_schedules(term, codes, constraints=None, prefs=None, top_n=5,
-                   link_by_class=True, time_limit=10.0):
+                   link_by_class=True, time_limit=10.0, min_difference=1):
     c = constraints or Constraints()
     p = prefs or Preferences()
     model, x, sec, problem = _build_model(term, codes, c, link_by_class)
@@ -135,7 +135,8 @@ def rank_schedules(term, codes, constraints=None, prefs=None, top_n=5,
             all_optimal = False
         schedules.append(schedule)
         breakdowns.append(breakdown)
-        model.add_bool_or([x[crn].negated() for crn in chosen])  # forbid this exact schedule
+                # Later schedules must differ from this one in at least `min_difference` sections.
+        model.add(sum(x[crn] for crn in chosen) <= len(chosen) - min_difference)
 
     if not schedules:
         return RankedResult([], [], "No conflict-free schedule exists for these courses and constraints.")

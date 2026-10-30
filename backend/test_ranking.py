@@ -76,3 +76,15 @@ def test_top_n_returns_distinct_schedules():
     r = rank_schedules(term, ["M"], top_n=3)
     got = [s[0]["crn"] for s in r.schedules]
     assert len(got) == 3 and len(set(got)) == 3
+def test_min_difference_skips_near_duplicates():
+    term = {"A": course("A", sec("A1", "Lecture", [0], t(9), t(9, 50)),
+                             sec("A2", "Lecture", [1], t(9), t(9, 50))),
+            "B": course("B", sec("B1", "Lecture", [2], t(9), t(9, 50)),
+                             sec("B2", "Lecture", [3], t(9), t(9, 50)))}
+    all4 = rank_schedules(term, ["A", "B"], prefs=only(w_days=1), top_n=4)
+    assert len(all4.schedules) == 4
+    r = rank_schedules(term, ["A", "B"], prefs=only(w_days=1), top_n=4, min_difference=2)
+    assert len(r.schedules) == 2
+    first, second = crn_lists(r)
+    assert not set(first) & set(second)   # they share no section at all
+    
