@@ -120,8 +120,12 @@ class _Collector(cp_model.CpSolverSolutionCallback):
             self.stop_search()
 
 
-def generate_schedules(term, codes, constraints=None, max_solutions=20, link_by_class=True):
-    c = constraints or Constraints()
+def _build_model(term, codes, c, link_by_class):
+    """Build the CP-SAT model containing all the hard rules.
+
+    Returns (model, x, sec, problem). If some course has no usable option at all,
+    returns (None, None, None, "explanation") instead.
+    """
     codes = list(dict.fromkeys(codes))  # drop duplicates, keep order
     for code in codes:
         if code not in term:
@@ -130,7 +134,7 @@ def generate_schedules(term, codes, constraints=None, max_solutions=20, link_by_
     options = build_options(term, codes, c, link_by_class)
     for code, usable in options.items():
         if not usable:
-            return Result([], f"No option for {code} fits your constraints.")
+            return None, None, None, f"No option for {code} fits your constraints."
 
     model = cp_model.CpModel()
     x = {}    # crn -> BoolVar ("this section is chosen")
@@ -162,9 +166,17 @@ def generate_schedules(term, codes, constraints=None, max_solutions=20, link_by_
             a, b = crns[i], crns[j]
             (ca, pa, ta), (cb, pb, tb) = grp[a], grp[b]
             if ca == cb and (pa != pb or ta == tb):
-                continue  # same group, or two different options of one course: already exclusive
+                continue  # same group, or two different options of one course
             if sections_conflict(sec[a], sec[b]):
                 model.add_at_most_one([x[a], x[b]])
+    return model, x, sec, None
+
+
+def generate_schedules(term, codes, constraints=None, max_solutions=20, link_by_class=True):
+    c = constraints or Constraints()
+    model, x, sec, problem = _build_model(term, codes, c, link_by_class)
+    if problem:
+        return Result([], problem)
 
     solver = cp_model.CpSolver()
     solver.parameters.enumerate_all_solutions = True

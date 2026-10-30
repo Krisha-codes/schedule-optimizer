@@ -21,7 +21,7 @@ def show(schedule):
 
 term = load_term(Path(__file__).parent / "data" / f"term_{TERM_CODE}.json")
 
-COURSES = ["CS 18000", "MA 16100", "ENGL 10600"]   # swap in courses you actually want
+COURSES = ["CS 18000", "MA 16100", "ENGL 10800"]   # swap in courses you actually want
 constraints = Constraints(earliest_start=9 * 60)   # nothing before 9:00
 
 try:
