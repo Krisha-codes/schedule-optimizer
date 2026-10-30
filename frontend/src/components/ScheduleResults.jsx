@@ -30,7 +30,7 @@ function explain(score) {
 
 const timedMeetings = (s) => s.meetings.filter((m) => m.start != null && m.end != null)
 
-export default function ScheduleResults({ data }) {
+export default function ScheduleResults({ data, locked, onLock, onAvoid, onUnlock }) {
   const [idx, setIdx] = useState(0)
   const [copied, setCopied] = useState(false)
   const { schedules, message, proven_optimal: provenOptimal } = data
@@ -102,12 +102,14 @@ export default function ScheduleResults({ data }) {
                 <th>CRN</th>
                 <th>When</th>
                 <th>Instructor</th>
+                <th>Pin</th>
               </tr>
             </thead>
             <tbody>
               {current.sections.map((s) => {
                 const timed = timedMeetings(s)
                 const who = [...new Set(s.meetings.flatMap((m) => m.instructors))].join(', ')
+                const isLocked = locked.some((p) => p.crn === s.crn)
                 return (
                   <tr key={s.crn}>
                     <td>{s.course}</td>
@@ -123,6 +125,25 @@ export default function ScheduleResults({ data }) {
                       ))}
                     </td>
                     <td>{who || '—'}</td>
+                    <td className="pin-cell">
+                      {isLocked ? (
+                        <>
+                          <span className="state">Locked</span>
+                          <button type="button" onClick={() => onUnlock(s.crn)}>
+                            Unlock
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" onClick={() => onLock(s)}>
+                            Lock
+                          </button>
+                          <button type="button" onClick={() => onAvoid(s)}>
+                            Avoid
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 )
               })}
@@ -130,6 +151,7 @@ export default function ScheduleResults({ data }) {
           </table>
         </div>
         <p className="hint">
+          Lock a section you already have, or avoid one you can't take, and the schedules update.
           Always confirm CRNs in myPurdue before registering. Linked sections come from Purdue.io
           data and are not an official guarantee.
         </p>

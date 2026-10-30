@@ -105,3 +105,33 @@ def test_labs_pair_only_with_their_own_lecture_when_linked():
 def test_unknown_course():
     with pytest.raises(ValueError):
         generate_schedules(TERM, ["ZZZ"])
+
+
+LINKED = {"L": course("L",
+                      sec("LEC1", "Lecture", MWF, t(9), t(9, 50), class_id="c1"),
+                      sec("LAB1", "Laboratory", TR, t(9), t(10, 50), class_id="c1"),
+                      sec("LAB1B", "Laboratory", TR, t(11), t(11, 50), class_id="c1"),
+                      sec("LEC2", "Lecture", MWF, t(13), t(13, 50), class_id="c2"),
+                      sec("LAB2", "Laboratory", TR, t(13), t(14, 50), class_id="c2"))}
+
+
+def test_locking_a_lecture_keeps_its_own_labs_only():
+    r = generate_schedules(LINKED, ["L"], Constraints(required_crns={"LEC1"}))
+    assert crns(r) == [["LAB1", "LEC1"], ["LAB1B", "LEC1"]]
+
+
+def test_locked_sections_from_different_options_are_impossible():
+    r = generate_schedules(LINKED, ["L"], Constraints(required_crns={"LEC1", "LAB2"}))
+    assert r.schedules == []
+    assert r.message.startswith("No option for L")
+
+
+def test_two_locked_sections_of_the_same_type_are_impossible():
+    r = generate_schedules(LINKED, ["L"], Constraints(required_crns={"LAB1", "LAB1B"}))
+    assert r.schedules == []
+    assert r.message.startswith("No option for L")
+
+
+def test_unknown_locked_crn_is_an_error():
+    with pytest.raises(ValueError):
+        generate_schedules(LINKED, ["L"], Constraints(required_crns={"NOPE"}))

@@ -288,3 +288,44 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+.chip b {
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.chip.locked {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.chip.avoided {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.pin-cell {
+  white-space: nowrap;
+}
+
+.pin-cell button,
+.table-head button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  margin-right: 4px;
+}
+
+.pin-cell button:hover,
+.table-head button:hover {
+  background: #fff7ed;
+}
+
+.pin-cell .state {
+  color: #047857;
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-right: 6px;
+}

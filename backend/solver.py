@@ -91,15 +91,18 @@ def build_options(term, codes, c, link_by_class):
 
         usable = []
         for opt_id, by_type in raw.items():
-            if required_here and not any(
-                    s["crn"] in required_here for secs in by_type.values() for s in secs):
-                continue  # this option doesn't contain the section the student locked in
+            option_crns = {s["crn"] for secs in by_type.values() for s in secs}
+            if not required_here <= option_crns:
+                continue  # this option doesn't contain every section the student locked in
             filtered = {}
             for typ, secs in by_type.items():
                 pinned = [s for s in secs if s["crn"] in required_here]
+                if len(pinned) > 1:
+                    break  # two locked sections of one type: only one can ever be taken
                 filtered[typ] = [s for s in (pinned or secs) if section_allowed(s, c)]
-            if all(filtered.values()):  # every component still has at least one section
-                usable.append((opt_id, filtered))
+            else:
+                if all(filtered.values()):  # every component still has at least one section
+                    usable.append((opt_id, filtered))
         options[code] = usable
     return options
 

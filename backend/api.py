@@ -67,12 +67,20 @@ def term_info(term=Depends(get_term)):
     return {"term_code": TERM_CODE, "campus": CAMPUS_CODE, "courses": len(term)}
 
 
+def _compact(text):
+    """'CS 18000' -> 'cs18000', so a search works with or without the space."""
+    return "".join(text.lower().split())
+
+
 @app.get("/api/courses")
 def search_courses(q: str = "", limit: int = Query(20, ge=1, le=100), term=Depends(get_term)):
     q = q.strip().lower()
+    q_compact = _compact(q)
     found = []
     for code, c in sorted(term.items()):
-        if _schedulable(c) and (q in code.lower() or q in (c["title"] or "").lower()):
+        matches = (q in code.lower() or q in (c["title"] or "").lower()
+                   or (q_compact and q_compact in _compact(code)))
+        if _schedulable(c) and matches:
             found.append({"code": code, "title": c["title"], "credits": c["credits"]})
             if len(found) >= limit:
                 break
