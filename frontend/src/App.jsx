@@ -95,7 +95,7 @@ export default function App() {
         <h1>Schedule Optimizer</h1>
         {term && (
           <p className="muted">
-            Term {term.term_code} · {term.campus} · {term.courses} courses loaded
+             {term.name ?? 'Term'} ({term.term_code}) · {term.campus} · {term.courses} courses loaded
           </p>
         )}
       </header>

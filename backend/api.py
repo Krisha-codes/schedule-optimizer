@@ -62,9 +62,22 @@ def _schedulable(course):
                for s in course["sections"])
 
 
+def term_name(code):
+    """'202710' -> 'Fall 2026'. Purdue's year digits are the academic year's end year."""
+    year, suffix = int(code[:4]), code[4:]
+    season, calendar_year = {
+        "10": ("Fall", year - 1),
+        "13": ("Winter", year - 1),
+        "20": ("Spring", year),
+        "30": ("Summer", year),
+    }.get(suffix, ("Term", year))
+    return f"{season} {calendar_year}"
+
+
 @app.get("/api/term")
 def term_info(term=Depends(get_term)):
-    return {"term_code": TERM_CODE, "campus": CAMPUS_CODE, "courses": len(term)}
+    return {"term_code": TERM_CODE, "name": term_name(TERM_CODE),
+            "campus": CAMPUS_CODE, "courses": len(term)}
 
 
 def _compact(text):

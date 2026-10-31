@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
-from api import app, get_term
+from api import app, get_term, term_name
+from config import TERM_CODE
 from test_solver import MWF, TERM, course, sec, t
 
 app.dependency_overrides[get_term] = lambda: TERM   # use the tiny hand-made term
@@ -58,3 +59,16 @@ def test_locking_a_crn_from_an_unselected_course_is_a_422():
     r = client.post("/api/schedules",
                     json={"courses": ["A"], "constraints": {"required_crns": ["B2"]}})
     assert r.status_code == 422 and "not found" in str(r.json())
+
+
+def test_term_names():
+    assert term_name("202710") == "Fall 2026"
+    assert term_name("202720") == "Spring 2027"
+    assert term_name("202630") == "Summer 2026"
+    assert term_name("202713") == "Winter 2026"
+    assert term_name("202699") == "Term 2026"
+
+
+def test_term_info_includes_the_name():
+    info = client.get("/api/term").json()
+    assert info["term_code"] == TERM_CODE and info["name"] == term_name(TERM_CODE)
