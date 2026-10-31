@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import WeekCalendar from './WeekCalendar.jsx'
+import { buildIcs, downloadText, icsFilename } from '../ics.js'
 import { dayString, fmt, shortType } from '../time.js'
 
 const PALETTE = [
@@ -30,7 +31,7 @@ function explain(score) {
 
 const timedMeetings = (s) => s.meetings.filter((m) => m.start != null && m.end != null)
 
-export default function ScheduleResults({ data, locked, onLock, onAvoid, onUnlock }) {
+export default function ScheduleResults({ data, termName, locked, onLock, onAvoid, onUnlock }) {
   const [idx, setIdx] = useState(0)
   const [copied, setCopied] = useState(false)
   const { schedules, message, proven_optimal: provenOptimal } = data
@@ -58,6 +59,9 @@ export default function ScheduleResults({ data, locked, onLock, onAvoid, onUnloc
       window.prompt('Copy these CRNs:', crns)
     }
   }
+
+  const exportCalendar = () =>
+    downloadText(icsFilename(termName, idx + 1), buildIcs(current.sections, { termName }))
 
   return (
     <div className="results">
@@ -89,9 +93,14 @@ export default function ScheduleResults({ data, locked, onLock, onAvoid, onUnloc
       <div className="card">
         <div className="table-head">
           <h2>Sections</h2>
-          <button type="button" onClick={copy}>
-            {copied ? 'Copied!' : 'Copy CRNs'}
-          </button>
+          <div>
+            <button type="button" onClick={exportCalendar}>
+              Add to calendar (.ics)
+            </button>
+            <button type="button" onClick={copy}>
+              {copied ? 'Copied!' : 'Copy CRNs'}
+            </button>
+          </div>
         </div>
         <div className="table-wrap">
           <table>
@@ -150,6 +159,10 @@ export default function ScheduleResults({ data, locked, onLock, onAvoid, onUnloc
             </tbody>
           </table>
         </div>
+        <p className="hint">
+          The calendar file repeats each class weekly for its section's dates. It doesn't skip
+          university holidays, and online or arranged sections without a meeting time are left out.
+        </p>
         <p className="hint">
           Lock a section you already have, or avoid one you can't take, and the schedules update.
           Always confirm CRNs in myPurdue before registering. Linked sections come from Purdue.io

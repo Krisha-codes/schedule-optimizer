@@ -186,6 +186,7 @@ export default function App() {
             <ScheduleResults
               key={run.id}
               data={run.data}
+              termName={termInfo?.term_code === termCode ? termInfo.name : ''}
               locked={locked}
               onLock={lock}
               onAvoid={avoid}
