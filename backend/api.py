@@ -1,29 +1,77 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
-from config import CAMPUS_CODE, TERM_CODE
+from config import CAMPUS_CODE
 from ranking import Preferences, rank_schedules
 from solver import Constraints, load_term
-from fastapi.responses import RedirectResponse
 
-DATA_PATH = Path(__file__).parent / "data" / f"term_{TERM_CODE}.json"
+DATA_DIR = Path(__file__).parent / "data"
+TERM_FILE = re.compile(r"term_(\d{6})\.json")
 
 app = FastAPI(title="Schedule Optimizer")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
                    allow_methods=["*"], allow_headers=["*"])  # lets the React dev server call us
+
+
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/docs")
 
 
-@lru_cache
-def get_term():
-    """Load the course data once, then reuse it."""
-    return load_term(DATA_PATH)
+def term_name(code):
+    """'202710' -> 'Fall 2026'. Purdue's year digits are the academic year's end year."""
+    year, suffix = int(code[:4]), code[4:]
+    season, calendar_year = {
+        "10": ("Fall", year - 1),
+        "13": ("Winter", year - 1),
+        "20": ("Spring", year),
+        "30": ("Summer", year),
+    }.get(suffix, ("Term", year))
+    return f"{season} {calendar_year}"
+
+
+def available_terms():
+    """Term codes that have a data file in data/, newest first."""
+    codes = []
+    for path in DATA_DIR.glob("term_*.json"):
+        match = TERM_FILE.fullmatch(path.name)
+        if match:
+            codes.append(match.group(1))
+    return sorted(codes, reverse=True)
+
+
+def default_term(codes):
+    """The newest Fall or Spring term (short winter/summer terms are rarely what people want)."""
+    return next((c for c in codes if c[4:] in ("10", "20")), codes[0])
+
+
+@lru_cache(maxsize=3)
+def _load(path, modified_ns):
+    return load_term(path)
+
+
+def get_term_code(term: str | None = None):
+    """The term code from ?term=..., or the default. 404 if we have no data for it."""
+    codes = available_terms()
+    if not codes:
+        raise HTTPException(status_code=503,
+                            detail="No course data yet. Run `python refresh_data.py` on the server.")
+    code = term or default_term(codes)
+    if code not in codes:
+        raise HTTPException(status_code=404, detail=f"No data for term {code}.")
+    return code
+
+
+def get_term(code: str = Depends(get_term_code)):
+    """The course data for the chosen term. Reloaded automatically when the file changes."""
+    path = DATA_DIR / f"term_{code}.json"
+    return _load(str(path), path.stat().st_mtime_ns)
 
 
 class ConstraintsIn(BaseModel):
@@ -62,21 +110,16 @@ def _schedulable(course):
                for s in course["sections"])
 
 
-def term_name(code):
-    """'202710' -> 'Fall 2026'. Purdue's year digits are the academic year's end year."""
-    year, suffix = int(code[:4]), code[4:]
-    season, calendar_year = {
-        "10": ("Fall", year - 1),
-        "13": ("Winter", year - 1),
-        "20": ("Spring", year),
-        "30": ("Summer", year),
-    }.get(suffix, ("Term", year))
-    return f"{season} {calendar_year}"
+@app.get("/api/terms")
+def list_terms():
+    codes = available_terms()
+    default = default_term(codes) if codes else None
+    return [{"code": c, "name": term_name(c), "default": c == default} for c in codes]
 
 
 @app.get("/api/term")
-def term_info(term=Depends(get_term)):
-    return {"term_code": TERM_CODE, "name": term_name(TERM_CODE),
+def term_info(code: str = Depends(get_term_code), term=Depends(get_term)):
+    return {"term_code": code, "name": term_name(code),
             "campus": CAMPUS_CODE, "courses": len(term)}
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { searchCourses } from '../api.js'
 
-export default function CoursePicker({ selected, onAdd, onRemove, max = 8 }) {
+export default function CoursePicker({ term, selected, onAdd, onRemove, max = 8 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
@@ -10,10 +10,10 @@ export default function CoursePicker({ selected, onAdd, onRemove, max = 8 }) {
 
   // Search 250 ms after the person stops typing; cancel any request that is still in flight.
   useEffect(() => {
-    if (q.length < 2) return undefined
+    if (q.length < 2 || !term) return undefined
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      searchCourses(q, controller.signal)
+      searchCourses(q, term, controller.signal)
         .then((found) => {
           setResults(found)
           setError('')
@@ -26,7 +26,7 @@ export default function CoursePicker({ selected, onAdd, onRemove, max = 8 }) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [q])
+  }, [q, term])
 
   const chosen = new Set(selected.map((c) => c.code))
   const shown = q.length >= 2 ? results.filter((c) => !chosen.has(c.code)) : []
@@ -47,7 +47,7 @@ export default function CoursePicker({ selected, onAdd, onRemove, max = 8 }) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search, e.g. CS 180 or calculus"
         aria-label="Search courses"
-        disabled={selected.length >= max}
+        disabled={!term || selected.length >= max}
       />
       {error && <p className="error">{error}</p>}
       {shown.length > 0 && (

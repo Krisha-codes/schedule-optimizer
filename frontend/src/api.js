@@ -26,13 +26,18 @@ async function request(url, options) {
   return res.json()
 }
 
-export const getTerm = () => request('/api/term')
+export const getTerms = () => request('/api/terms')
 
-export const searchCourses = (q, signal) =>
-  request(`/api/courses?q=${encodeURIComponent(q)}&limit=8`, { signal })
+export const getTerm = (term) => request(`/api/term?term=${encodeURIComponent(term)}`)
 
-export const buildSchedules = (payload) =>
-  request('/api/schedules', {
+export const searchCourses = (q, term, signal) =>
+  request(
+    `/api/courses?term=${encodeURIComponent(term)}&q=${encodeURIComponent(q)}&limit=8`,
+    { signal },
+  )
+
+export const buildSchedules = (payload, term) =>
+  request(`/api/schedules?term=${encodeURIComponent(term)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

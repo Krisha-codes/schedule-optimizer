@@ -22,13 +22,14 @@ DAY_MAP = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
            "Friday": 4, "Saturday": 5, "Sunday": 6}
 
 
-def get_all(url, params=None, tries=3):
-    """Follow OData paging until every row is fetched.
+def get_all(url, params=None, tries=3, max_pages=None):
+    """Follow OData paging until every row is fetched (or max_pages pages, if given).
 
     A request that fails because of the network or a server error is retried a few
     times; a 4xx error (a mistake in our query) is raised straight away.
     """
     rows = []
+    pages = 0
     while url:
         for attempt in range(1, tries + 1):
             try:
@@ -43,8 +44,11 @@ def get_all(url, params=None, tries=3):
                 time.sleep(2 * attempt)
         data = r.json()
         rows.extend(data["value"])
+        pages += 1
         url = data.get("@odata.nextLink")
         params = None  # nextLink already contains the query
+        if max_pages is not None and pages >= max_pages:
+            break
         time.sleep(0.3)  # be polite to a community-run API
     return rows
 
@@ -110,6 +114,12 @@ def fetch_subjects():
     rows = get_all(f"{BASE}/Subjects", {"$orderby": "Abbreviation"})
     return [r["Abbreviation"] for r in rows if r.get("Abbreviation")]
 
+def term_has_classes(term_code):
+    """Cheap check: does Purdue.io list any classes for this term on our campus? (first page only)"""
+    rows = get_all(f"{BASE}/Classes",
+                   {"$filter": f"Term/Code eq '{term_code}' and Campus/Code eq '{CAMPUS_CODE}'"},
+                   max_pages=1)
+    return len(rows) > 0
 
 def fetch_subject(subject, term_code):
     params = {

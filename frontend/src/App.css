@@ -329,3 +329,22 @@ td {
   font-size: 0.8rem;
   margin-right: 6px;
 }
+
+.term-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.term-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.term-pick select {
+  width: auto;
+}
