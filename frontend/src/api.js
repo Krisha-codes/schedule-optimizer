@@ -1,9 +1,11 @@
-// All calls use relative URLs (/api/...). In development, Vite forwards them to the backend.
+// In development, calls use relative URLs (/api/...) and Vite forwards them to the backend.
+// In the deployed site, VITE_API_URL holds the server address (for example https://my-api.onrender.com).
+const API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 
 async function request(url, options) {
   let res
   try {
-    res = await fetch(url, options)
+    res = await fetch(API + url, options)
   } catch (e) {
     if (e.name === 'AbortError') throw e
     throw new Error("Can't reach the server. Is the backend running?", { cause: e })

@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api
-from api import app, default_term, get_term, term_name
+from api import app, default_term, get_term, parse_origins, term_name
 from test_solver import MWF, TERM, course, sec, t
 
 app.dependency_overrides[get_term] = lambda: TERM   # use the tiny hand-made term
@@ -146,3 +146,26 @@ def test_a_refreshed_data_file_is_picked_up_without_restarting(data_folder):
     later = path.stat().st_mtime + 5
     os.utime(path, (later, later))
     assert [c["code"] for c in client.get("/api/courses").json()] == ["B"]
+
+
+def test_parse_origins():
+    assert parse_origins(None) == ["http://localhost:5173"]
+    assert parse_origins("") == ["http://localhost:5173"]
+    assert parse_origins(" https://me.github.io , http://localhost:5173/ ,") == [
+        "https://me.github.io", "http://localhost:5173"]
+
+
+def test_health_needs_no_data():
+    assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_only_the_allowed_site_may_call_from_a_browser():
+    ok = client.get("/health", headers={"Origin": "http://localhost:5173"})
+    assert ok.headers["access-control-allow-origin"] == "http://localhost:5173"
+    other = client.get("/health", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in other.headers
+
+
+def test_top_n_is_capped_at_ten():
+    r = client.post("/api/schedules", json={"courses": ["A"], "top_n": 11})
+    assert r.status_code == 422

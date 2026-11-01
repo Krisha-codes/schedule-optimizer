@@ -1,3 +1,4 @@
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -14,15 +15,27 @@ from solver import Constraints, load_term
 DATA_DIR = Path(__file__).parent / "data"
 TERM_FILE = re.compile(r"term_(\d{6})\.json")
 
-app = FastAPI(title="Schedule Optimizer")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
-                   allow_methods=["*"], allow_headers=["*"])  # lets the React dev server call us
+def parse_origins(value):
+    """'https://a.github.io, http://localhost:5173/' -> ['https://a.github.io', 'http://localhost:5173']"""
+    origins = [o.strip().rstrip("/") for o in (value or "").split(",") if o.strip()]
+    return origins or ["http://localhost:5173"]
 
+
+app = FastAPI(title="Schedule Optimizer")
+# Which websites may call this API from a browser. On the server, set ALLOWED_ORIGINS to your
+# GitHub Pages address (for example https://your-name.github.io).
+app.add_middleware(CORSMiddleware, allow_origins=parse_origins(os.environ.get("ALLOWED_ORIGINS")),
+                   allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/docs")
 
+
+@app.get("/health", include_in_schema=False)
+def health():
+    """Lets the hosting service check that the server is up (needs no data)."""
+    return {"status": "ok"}
 
 def term_name(code):
     """'202710' -> 'Fall 2026'. Purdue's year digits are the academic year's end year."""
@@ -99,7 +112,7 @@ class ScheduleRequest(BaseModel):
     courses: list[str] = Field(min_length=1, max_length=10)
     constraints: ConstraintsIn = Field(default_factory=ConstraintsIn)
     preferences: PreferencesIn = Field(default_factory=PreferencesIn)
-    top_n: int = Field(5, ge=1, le=20)
+    top_n: int = Field(5, ge=1, le=10)
     min_difference: int = Field(1, ge=1, le=10)
 
 
@@ -154,8 +167,9 @@ def build_schedules(req: ScheduleRequest, term=Depends(get_term)):
     prefs["preferred_instructors"] = set(prefs["preferred_instructors"])
     prefs["avoided_instructors"] = set(prefs["avoided_instructors"])
     try:
-        result = rank_schedules(term, req.courses, constraints, Preferences(**prefs),
-                                top_n=req.top_n, min_difference=req.min_difference)
+                result = rank_schedules(term, req.courses, constraints, Preferences(**prefs),
+                                top_n=req.top_n, min_difference=req.min_difference,
+                                time_limit=5.0)  # keep any one request short on a shared server
     except ValueError as e:                     # e.g. unknown course code
         raise HTTPException(status_code=422, detail=str(e))
     return {

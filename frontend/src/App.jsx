@@ -148,6 +148,12 @@ export default function App() {
             </span>
           )}
         </div>
+        {terms === null && !termError && (
+          <p className="muted">
+            Connecting to the server… the free server sleeps when idle and can take up to a minute to
+            wake up.
+          </p>
+        )}
         {termError && <p className="error">{termError}</p>}
         {terms && terms.length === 0 && (
           <p className="error">No course data found. Download a term on the server first.</p>

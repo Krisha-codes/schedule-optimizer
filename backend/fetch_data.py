@@ -170,7 +170,7 @@ def main(argv=None, data_dir=DATA_DIR):
         courses = kept
 
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(courses, indent=1))
+    tmp.write_text(json.dumps(courses, separators=(",", ":")))  # compact: smaller to store and ship
     tmp.replace(path)  # only replace the old file once the new one is fully written
     n_sections = sum(len(c["sections"]) for c in courses.values())
     print(f"Saved {len(courses)} courses, {n_sections} sections -> {path}")
