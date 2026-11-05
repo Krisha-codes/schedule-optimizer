@@ -1,0 +1,51 @@
+name: Refresh course data
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # every Monday at 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install "requests>=2.32"
+
+      # A fresh checkout gives every file today's date, so --force is what makes
+      # already-downloaded terms update too.
+      - name: Download current and upcoming terms
+        working-directory: backend
+        run: python refresh_data.py --force
+
+      # Changing this file every week guarantees a commit, which keeps GitHub from
+      # switching off scheduled workflows after a long quiet spell.
+      - name: Record the run
+        run: date -u +"%Y-%m-%d" > backend/data/last_refresh.txt
+
+      - name: Commit the new data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/data
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Refresh course data ($(date -u +%F))"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
