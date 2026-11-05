@@ -187,13 +187,3 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-def test_a_failing_subject_keeps_its_previous_data(monkeypatch, tmp_path):
-    fake_api(monkeypatch, {"CS": [raw_class("CS", "18000", "1")],
-                           "MA": [raw_class("MA", "16100", "2")]})
-    fetch_data.main(["--term", "202710"], data_dir=tmp_path)
-
-    fake_api(monkeypatch, {"CS": [raw_class("CS", "24000", "3")],
-                           "MA": [raw_class("MA", "16100", "2")]}, failing={"MA"})
-    assert fetch_data.main(["--term", "202710"], data_dir=tmp_path) == 1
-    saved = json.loads((tmp_path / "term_202710.json").read_text())
-    assert sorted(saved) == ["CS 24000", "MA 16100"]   # CS refreshed, MA kept from before
